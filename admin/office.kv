@@ -1,0 +1,79 @@
+
+<FlatButton@ButtonBehavior+Label>
+    font_size:24
+    bold:True
+
+<masterscreen>:
+    id : main
+    orientation:"vertical"
+    BoxLayout
+        id : top_bar
+        orientation:"vertical"
+        size_hint_y:None
+        height:50
+        padding:10
+        canvas.before:
+            Color:
+                rgba:(0.404, 0.227, 0.718, 1)
+            Rectangle:
+                size:self.size
+                pos:self.pos
+        Label:
+            text:"Admin Login"
+            size_hint_x:1
+            font_size:28
+            color:(1, 1, 1, 1)
+            bold:True
+    BoxLayout
+        id:welcome
+        orientation:"vertical"
+        size_hint_y: None
+        size_hint_x:.8
+        height:180
+        center: (.5,.5)
+        spacing:10
+        BoxLayout:
+            size_hint_y:None
+            height:35
+            Label:
+                text:"Username"
+                size_hint_x:.35
+                color:(0,0,0, 1)
+                font_size:20
+            TextInput:
+                id:vc_user
+                size_hint_x:.65
+                font_size:20
+                color:(0,0,0, 1)
+                multiline:False
+                focus:True
+                on_text_validate:vc_pass.focus=True
+        BoxLayout:
+            size_hint_y:None
+            height:35
+            Label:
+                text:"Password"
+                size_hint_x:.35
+                font_size:20
+                color:(0,0,0, 1)
+            TextInput:
+                id:vc_pass
+                text_hint:"password"
+                password:True
+                font_size:20
+                size_hint_x:.65
+                color:(0,0,0, 1)
+                multiline:False
+        BoxLayout:
+            size_hint_y:None
+            height:30
+            FlatButton:
+                hint_size_x:.9
+                text:"Login"
+                color:( 0, 0, 0, 1)
+                center:(.5,.5)
+                on_release:root.validateAdmin()
+
+    BoxLayout:
+        id:space
+
