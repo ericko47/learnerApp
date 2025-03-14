@@ -1,3 +1,4 @@
+
 # learnerApp
 - is a school management system that provides a way to register or admit a student, and enroll them into their different courses and classes, connect them with their lecturers.
 - The scholl also registers a lecturer with the courses they teach, the lecturer will then be connected with the students.
@@ -8,3 +9,4 @@
   - You will need to download ffmpeg into admin folder, lecturer and student. This is becaurse the three folders are meant to work in collaboration from different devices, managed by a common server.
   - ideas to improve this project are accepted.
   - 
+
