@@ -62,13 +62,18 @@ tm = ""
 
 
 class Mypopup(Popup):
-    
-    def __init__(self, base_dir):
+    def __init__(self, base_dir=None, **kwargs):
+        super().__init__(**kwargs)  # Call Popup's constructor
+
+        if base_dir is None:
+            base_dir = Path.home() / "LearnerApp_Temp"  # Set a default path
+
         self.base_dir = Path(base_dir).resolve()
         self.temp_dir = self.base_dir / "temp_files"
         self.final_dir = self.base_dir / "final_files"
         self.video_file = self.temp_dir / "video.mp4"
         self.learner_videos_dir = Path.home() / "LearnerApp_Videos"  # Cross-platform
+
 
     # def __init__(self, **kwargs):
     #     super().__init__(**kwargs)
@@ -81,68 +86,104 @@ class Mypopup(Popup):
         self.startRecording()
         self.dismiss()
 
-    def startRecording(self):
+    def startRecording(self, base_dir):
         global vars
         vars = True
-        lay = mylayout()
+
+        # Ensure UI is initialized before recording starts
+        lay = mylayout(base_dir=base_dir)
         lay.manageInterface()
         Window.minimize()
-        Window.on_minimize(threading.Thread(target=recordSc.start_AVrecording()))
-        return vars
+        print("Recording started...")
+
+        try:
+            # Initialize Video Recorder
+            print("Initializing video recording...")
+            video_thread = recordSc.VideoRecorder(fps=30, output_file=str(base_dir / "output.mp4"))
+
+            if not isinstance(video_thread, recordSc.VideoRecorder):
+                print("Error: VideoRecorder did not initialize correctly!")
+                return
+
+            # Initialize Audio Recorder
+            print("Initializing audio recording...")
+            audio_thread = recordSc.AudioRecorder(str(base_dir / "audio.wav"))
+
+            if not isinstance(audio_thread, recordSc.AudioRecorder):
+                print("Error: AudioRecorder did not initialize correctly!")
+                return
+
+            # Store threads in self for stopping later
+            self.video_thread = video_thread
+            self.audio_thread = audio_thread
+
+            print("Video and Audio threads initialized successfully!")
+
+            # Start recording in a separate thread
+            recording_thread = threading.Thread(target=recordSc.start_AVrecording, args=(video_thread, audio_thread))
+            recording_thread.start()
+
+        except Exception as e:
+            print(f"Error starting recording: {e}")
+            self.video_thread = None
+            self.audio_thread = None
+
     
-
-
-    def renameVid(self, name):
-        """Renames a video file and moves it to the final directory."""
+    def check_ffmpeg_installed(self):
+        """Checks if FFmpeg is installed."""
         try:
-            self.final_dir.mkdir(parents=True, exist_ok=True)  # Ensure final directory exists
+            subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            return True
+        except FileNotFoundError:
+            print("Error: FFmpeg is not installed. Please install it to continue.")
+            return False
 
-            if self.video_file.exists():
-                new_path = self.final_dir / f"{name}.mp4"
-                self.video_file.rename(new_path)
-                print(f"Renamed video to: {new_path}")
-            else:
-                print("Video file does not exist.")
-        except Exception as e:
-            print(f"Error renaming video: {e}")
-
-    def conCat(self, name):
-        """Concatenates video files and moves them to LearnerApp_Videos."""
-        try:
-            os.chdir(self.temp_dir)  # Change directory to temp_files
-            self.learner_videos_dir.mkdir(parents=True, exist_ok=True)  # Create LearnerApp_Videos if not exists
-
-            final_video_path = self.learner_videos_dir / f"{name}.mp4"
-
-            print(f"Contents of {self.temp_dir}: {os.listdir(self.temp_dir)}")
-
-            # Move concatenated file to final directory
-            if self.temp_dir.exists():
-                shutil.move(str(self.temp_dir), str(final_video_path))
-                print(f"Video moved to: {final_video_path}")
-            else:
-                print("No videos found in temp_files.")
-
-            # Remove old .mp4 files from temp_files
-            for vid in self.temp_dir.glob("*.mp4"):
-                vid.unlink()
-                print(f"Deleted: {vid}")
-
-        except Exception as e:
-            print(f"Error in concat_videos: {e}")
-
-    @staticmethod
-    def fileHandler():
+    def create_videos_list(self):
         """Creates a videos.txt file with a list of MP4 files in temp_files."""
-        temp_dir = Path("./temp_files")
-        video_list = [f"file '{vid.name}'" for vid in temp_dir.glob("*.mp4")]
+        video_list = [f"file '{vid.name}'" for vid in self.temp_dir.glob("*.mp4")]
 
         if video_list:
-            with open(temp_dir / "videos.txt", 'w') as f:
+            with open(self.video_list_file, 'w') as f:
                 f.write("\n".join(video_list))
             print("videos.txt created successfully.")
         else:
             print("No videos found to list.")
+
+    def concat_videos(self, output_name):
+        """Concatenates video files using FFmpeg."""
+        if not self.check_ffmpeg_installed():
+            return
+        
+        self.create_videos_list()  # Ensure videos.txt is up to date
+        output_path = self.learner_videos_dir / f"{output_name}.mp4"
+        self.learner_videos_dir.mkdir(parents=True, exist_ok=True)  # Ensure output directory exists
+
+        try:
+            cmd = ["ffmpeg","-f", "concat","-safe", "0","-i", str(self.video_list_file),"-c", "copy",str(output_path)            ]
+            subprocess.run(cmd, check=True)
+            print(f"Video concatenation successful: {output_path}")
+
+            # Cleanup temp video files after processing
+            for vid in self.temp_dir.glob("*.mp4"):
+                vid.unlink()
+                print(f"Deleted: {vid}")
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error during video concatenation: {e}")
+
+    def rename_vid(self, old_name, new_name):
+        """Renames a video file and moves it to the final directory."""
+        old_path = self.temp_dir / f"{old_name}.mp4"
+        new_path = self.final_dir / f"{new_name}.mp4"
+        
+        self.final_dir.mkdir(parents=True, exist_ok=True)  # Ensure final directory exists
+
+        if old_path.exists():
+            old_path.rename(new_path)
+            print(f"Renamed and moved video to: {new_path}")
+        else:
+            print("Error: Video file does not exist.")
+
 
 # Example Usage
 # if __name__ == "__main__":
@@ -224,6 +265,35 @@ class mylayout(Widget):
         self.ids.close.disabled = False
         self.ids.stt.disabled = False
         return False, False
+    
+    def stopScreenWrapper(self):
+        """Wrapper function to call stopScreen with necessary arguments."""
+        video_name = "recorded_video"
+
+        print("Attempting to stop recording...")
+
+        # Debug print: Check if attributes exist
+        print(f"Has 'video_thread'? {'video_thread' in self.__dict__}")
+        print(f"Has 'audio_thread'? {'audio_thread' in self.__dict__}")
+
+        # Ensure threads exist
+        if not hasattr(self, 'video_thread') or not hasattr(self, 'audio_thread'):
+            print("Error: No recording threads found!")
+            return
+
+        # Ensure threads are properly initialized
+        if self.video_thread is None or self.audio_thread is None:
+            print("Error: Recording threads were not initialized properly!")
+            return
+
+        # Ensure recording is actually running
+        if not getattr(self.video_thread, "open", False) or not getattr(self.audio_thread, "open", False):
+            print("Error: Recording was not started properly or has already stopped!")
+            return
+
+        print("Stopping recording...")
+        self.stopScreen(self.video_thread, self.audio_thread, video_name)
+
 
     def stopScreen(self):
         pop = Mypopup()
