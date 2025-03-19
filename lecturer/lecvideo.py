@@ -86,12 +86,12 @@ class Mypopup(Popup):
         self.startRecording()
         self.dismiss()
 
-    def startRecording(self, base_dir):
+    def startRecording(self):#, base_dir):
         global vars
         vars = True
 
         # Ensure UI is initialized before recording starts
-        lay = mylayout(base_dir=base_dir)
+        lay = mylayout()#base_dir=base_dir)
         lay.manageInterface()
         Window.minimize()
         print("Recording started...")
@@ -99,7 +99,7 @@ class Mypopup(Popup):
         try:
             # Initialize Video Recorder
             print("Initializing video recording...")
-            video_thread = recordSc.VideoRecorder(fps=30, output_file=str(base_dir / "output.mp4"))
+            video_thread = recordSc.VideoRecorder() #fps=30, output_file=str(base_dir / "output.mp4"))
 
             if not isinstance(video_thread, recordSc.VideoRecorder):
                 print("Error: VideoRecorder did not initialize correctly!")
@@ -107,7 +107,7 @@ class Mypopup(Popup):
 
             # Initialize Audio Recorder
             print("Initializing audio recording...")
-            audio_thread = recordSc.AudioRecorder(str(base_dir / "audio.wav"))
+            audio_thread = recordSc.AudioRecorder()#str(base_dir / "audio.wav"))
 
             if not isinstance(audio_thread, recordSc.AudioRecorder):
                 print("Error: AudioRecorder did not initialize correctly!")
@@ -117,10 +117,10 @@ class Mypopup(Popup):
             self.video_thread = video_thread
             self.audio_thread = audio_thread
 
-            print("Video and Audio threads initialized successfully!")
+            print('Threads are not empty at this point')
 
             # Start recording in a separate thread
-            recording_thread = threading.Thread(target=recordSc.start_AVrecording, args=(video_thread, audio_thread))
+            recording_thread = threading.Thread(target=recordSc.start_AVrecording, daemon=True)#, args=(video_thread, audio_thread))
             recording_thread.start()
 
         except Exception as e:
@@ -267,32 +267,9 @@ class mylayout(Widget):
         return False, False
     
     def stopScreenWrapper(self):
-        """Wrapper function to call stopScreen with necessary arguments."""
-        video_name = "recorded_video"
-
-        print("Attempting to stop recording...")
-
-        # Debug print: Check if attributes exist
-        print(f"Has 'video_thread'? {'video_thread' in self.__dict__}")
-        print(f"Has 'audio_thread'? {'audio_thread' in self.__dict__}")
-
-        # Ensure threads exist
-        if not hasattr(self, 'video_thread') or not hasattr(self, 'audio_thread'):
-            print("Error: No recording threads found!")
-            return
-
-        # Ensure threads are properly initialized
-        if self.video_thread is None or self.audio_thread is None:
-            print("Error: Recording threads were not initialized properly!")
-            return
-
-        # Ensure recording is actually running
-        if not getattr(self.video_thread, "open", False) or not getattr(self.audio_thread, "open", False):
-            print("Error: Recording was not started properly or has already stopped!")
-            return
-
+      
         print("Stopping recording...")
-        self.stopScreen(self.video_thread, self.audio_thread, video_name)
+        self.stopScreen()
 
 
     def stopScreen(self):

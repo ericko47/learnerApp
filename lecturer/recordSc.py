@@ -10,6 +10,8 @@ import os
 import pyautogui
 from kivy.core.window import Window
 
+import queue
+
 
 # from accounts.lecvideo import Mypopup
 
@@ -55,15 +57,13 @@ class VideoRecorder():
             cv2.destroyAllWindows()
 
     def start(self):
-        # "Launches the video recording function using a thread"
-        video_thread = threading.Thread(target=self.record)
+        video_thread = threading.Thread(target=self.record, daemon=True)
         video_thread.start()
+        return video_thread
 
 
-class AudioRecorder():
-    # "Audio class based on pyAudio and Wave"
-
-    def __init__(self, filename="temps_audio.wav", rate=44100, fpb=1024, channels=2):
+class AudioRecorder:
+    def __init__(self, filename="temps_audio.wav", rate=44100, fpb=512, channels=2):
         self.open = True
         self.rate = rate
         self.frames_per_buffer = fpb
@@ -77,15 +77,56 @@ class AudioRecorder():
                                       input=True,
                                       frames_per_buffer=self.frames_per_buffer)
         self.audio_frames = []
+        self.audio_queue = queue.Queue()  # Queue to avoid buffer overflow
 
     def record(self):
-        # "Audio starts being recorded"
         self.stream.start_stream()
         while self.open:
-            data = self.stream.read(self.frames_per_buffer)
-            self.audio_frames.append(data)
-            if not self.open:
-                break
+            try:
+                data = self.stream.read(self.frames_per_buffer, exception_on_overflow=False)
+                self.audio_queue.put(data)  # Store in queue
+            except OSError as e:
+                print(f"Audio error: {e}")
+
+    def process_audio(self):
+        while self.open:
+            if not self.audio_queue.empty():
+                self.audio_frames.append(self.audio_queue.get())
+
+    def start(self):
+        audio_thread = threading.Thread(target=self.record, daemon=True)
+        process_thread = threading.Thread(target=self.process_audio, daemon=True)
+        audio_thread.start()
+        process_thread.start()
+        return audio_thread, process_thread
+
+
+# class AudioRecorder():
+#     # "Audio class based on pyAudio and Wave"
+
+#     def __init__(self, filename="temps_audio.wav", rate=44100, fpb=1024, channels=2):
+#         self.open = True
+#         self.rate = rate
+#         self.frames_per_buffer = fpb
+#         self.channels = channels
+#         self.format = pyaudio.paInt16
+#         self.audio_filename = filename
+#         self.audio = pyaudio.PyAudio()
+#         self.stream = self.audio.open(format=self.format,
+#                                       channels=self.channels,
+#                                       rate=self.rate,
+#                                       input=True,
+#                                       frames_per_buffer=self.frames_per_buffer)
+#         self.audio_frames = []
+
+#     def record(self):
+#         # "Audio starts being recorded"
+#         self.stream.start_stream()
+#         while self.open:
+#             data = self.stream.read(self.frames_per_buffer)
+#             self.audio_frames.append(data)
+#             if not self.open:
+#                 break
 
     def stop(self):
         # "Finishes the audio recording therefore the thread too"
@@ -101,18 +142,19 @@ class AudioRecorder():
             waveFile.writeframes(b''.join(self.audio_frames))
             waveFile.close()
 
-    def start(self):
-        # "Launches the audio recording function using a thread"
-        audio_thread = threading.Thread(target=self.record)
-        audio_thread.start()
-        return audio_thread
+#     def start(self):
+#         # "Launches the audio recording function using a thread"
+#         audio_thread = threading.Thread(target=self.record)
+#         audio_thread.start()
+#         return audio_thread
 
 def start_AVrecording():
-    global video_thread
     global audio_thread
-    video_thread = VideoRecorder()
+    global video_thread
     audio_thread = AudioRecorder()
     audio_thread.start()
+    time.sleep(0.01)
+    video_thread = VideoRecorder()
     video_thread.start()
 
 
