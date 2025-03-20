@@ -97,20 +97,20 @@ class Mypopup(Popup):
         print("Recording started...")
 
         try:
-            # Initialize Video Recorder
-            print("Initializing video recording...")
-            video_thread = recordSc.VideoRecorder() #fps=30, output_file=str(base_dir / "output.mp4"))
-
-            if not isinstance(video_thread, recordSc.VideoRecorder):
-                print("Error: VideoRecorder did not initialize correctly!")
-                return
-
             # Initialize Audio Recorder
             print("Initializing audio recording...")
             audio_thread = recordSc.AudioRecorder()#str(base_dir / "audio.wav"))
 
             if not isinstance(audio_thread, recordSc.AudioRecorder):
                 print("Error: AudioRecorder did not initialize correctly!")
+                return
+            
+            # Initialize Video Recorder
+            print("Initializing video recording...")
+            video_thread = recordSc.VideoRecorder() #fps=30, output_file=str(base_dir / "output.mp4"))
+
+            if not isinstance(video_thread, recordSc.VideoRecorder):
+                print("Error: VideoRecorder did not initialize correctly!")
                 return
 
             # Store threads in self for stopping later

@@ -34,6 +34,7 @@ class VideoRecorder():
 
     def record(self):
         """Video starts being recorded"""
+        print("Video Recording started in record.....")
         timer_start = time.time()
         timer_current = 0
         fpc = 60
